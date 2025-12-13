@@ -15,19 +15,41 @@ const bot = new Telegraf(process.env.BOT_TOKEN)
 bot.start(async (ctx) => {
   // Check if the user is still pending a request
   const requests = await getWaitlist()
-  const requestsFromUser = requests.filter(row => row['Chat ID'] === `${ctx.chat.id}`)
-  if (requestsFromUser.some(r => !['Delivered', 'Cancelled'].includes(r.Status))) {
-    ctx.reply('You still have a request that has not been completed!\nPlease wait before making a new one.')
+  if (`${process.env.ADMIN_CHAT_ID}`.split(',').map(Number).includes(ctx.chat.id)) {
+    const pendingRequests = requests.filter(row => !row.Status)
+    const purposes = new Set(requests.map(row => row.Purpose))
+    const message = 
+`
+*Pending Requests*
+Tap one of the entries to copy the chat command, then paste it as a message to the bot
+${
+  [...purposes].sort().map(purpose => `
+_${purpose}_
+${
+  pendingRequests.map((row, index) => ({...row, index})).filter(row => row.Purpose === purpose).map(
+    row => `@${row['Telegram Handle']}: ${row.Qty} - \`/choose ${row.index}\``
+  ).join('\n')
+}
+`).join('')
+}
+`
+    ctx.reply(message, { parse_mode: 'Markdown' })
   } else {
-    ctx.reply(
-      'Tap below to make a request',
-      Markup.inlineKeyboard([
-        {
-          text: 'Request', 
-          url: makeFormRedirect(ctx),
-        },
-      ])
-    )
+    // Non-admin user, direct to form
+    const requestsFromUser = requests.filter(row => row['Chat ID'] === `${ctx.chat.id}`)
+    if (requestsFromUser.some(r => !['Delivered', 'Cancelled'].includes(r.Status))) {
+      ctx.reply('You still have a request that has not been completed!\nPlease wait before making a new one.')
+    } else {
+      ctx.reply(
+        'Tap below to make a request',
+        Markup.inlineKeyboard([
+          {
+            text: 'Request',
+            url: makeFormRedirect(ctx),
+          },
+        ])
+      )
+    }
   }
 })
 bot.help((ctx) => ctx.reply(REDIRECT_TO_START))
