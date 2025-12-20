@@ -27,7 +27,7 @@ ${
 _${purpose}_
 ${
   pendingRequests.map((row, index) => ({...row, index})).filter(row => row.Purpose === purpose).map(
-    row => `@${row['Telegram Handle']}: ${row.Qty} - \`/choose ${row.index}\``
+    row => `@${row['Telegram Handle']}: ${row.Qty} - \`/choose ${row['Chat ID']}\``
   ).join('\n')
 }
 `).join('')
@@ -52,6 +52,96 @@ ${
     }
   }
 })
+
+//
+// Commands to start fulfillment workflow
+//
+
+bot.command('choose', async (ctx) => {
+  if (`${process.env.ADMIN_CHAT_ID}`.split(',').map(Number).includes(ctx.chat.id)) {
+    if (!ctx.args.length) {
+      ctx.reply('Use /start to find a list of requests to fulfill')
+    } else {
+      const requests = await getWaitlist()
+      const request = requests.filter(row => row['Chat ID'] === `${ctx.args[0]}`).at(0)
+      if (request) {
+        ctx.reply(
+          `Fulfill request of qty ${request.Qty} from @${request['Telegram Handle']} for ${request.Purpose}?`,
+          Markup.inlineKeyboard([
+            {
+              text: 'No ❌',
+              callback_data: 'abort',
+            },
+            {
+              text: 'Fulfill 👍',
+              callback_data: `fulfill-${request['Chat ID']}`
+            },
+          ])
+        )
+      } else {
+        ctx.reply(`Invalid request ${ctx.args[0]} specified. Use /start to find a list of requests to fulfill`)
+      }
+    }
+  } else {
+    ctx.reply('You are not allowed to use this command')
+  }
+})
+
+bot.action('abort', (ctx) => {
+  ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: No ❌)')
+  ctx.reply('Action aborted. Use /start to find a list of requests to fulfill')
+  ctx.answerCbQuery()
+})
+
+bot.action(/fulfill-(\d+)/, async (ctx) => {
+  const requests = await getWaitlist()
+  const chatId = Number(ctx.match[1])
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Fulfill 👍)')
+  // TODO - Update sheet with Pending status
+  bot.telegram.sendMessage(
+    chatId, 
+    'Hello! we would like to confirm your request.\n' +
+    `This is for a qty of ${request.Qty} for ${request.Purpose}\n` +
+    'Please respond with the button below',
+    Markup.inlineKeyboard([
+      {
+        text: 'Cancel ❌',
+        callback_data: `cancel-${chatId}`,
+      },
+      {
+        text: 'Confirm 👍',
+        callback_data: `confirm-${chatId}`,
+      },
+    ]),
+  )
+  ctx.reply(`Message sent to @${request['Telegram Handle']} for confirmation.`)
+  ctx.answerCbQuery()
+})
+
+//
+// Commands for customer to confirm or cancel the request
+//
+bot.action(/cancel-(\d+)/, async (ctx) => {
+  const requests = await getWaitlist()
+  const chatId = Number(ctx.match[1])
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  // TODO - Update sheet with Cancelled status
+  ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Cancel ❌)')
+  ctx.reply("That's okay! Use /start if you ever want to make a new request in future.")
+  ctx.answerCbQuery()
+})
+
+bot.action(/confirm-(\d+)/, async (ctx) => {
+  const requests = await getWaitlist()
+  const chatId = Number(ctx.match[1])
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  // TODO - Update sheet with Confirmed status
+  ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Confirm 👍)')
+  ctx.reply('Got it! We will be in touch with further information soon.')
+  ctx.answerCbQuery()
+})
+
 bot.help((ctx) => ctx.reply(REDIRECT_TO_START))
 bot.hears(/.*/, (ctx) => ctx.reply(REDIRECT_TO_START))
 const botWebhookPromise = bot.createWebhook({ domain: process.env.HOST })
