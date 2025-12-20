@@ -1,5 +1,5 @@
 const { Telegraf, Markup } = require('telegraf')
-const { getWaitlist } = require('./google')
+const { getWaitlist, updateWaitlistStatus } = require('./google')
 
 const REDIRECT_TO_START = 'Use /start to make a request'
 
@@ -98,7 +98,7 @@ bot.action(/fulfill-(\d+)/, async (ctx) => {
   const chatId = Number(ctx.match[1])
   const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Fulfill 👍)')
-  // TODO - Update sheet with Pending status
+  await updateWaitlistStatus('Pending', request.index)
   bot.telegram.sendMessage(
     chatId, 
     'Hello! we would like to confirm your request.\n' +
@@ -126,7 +126,7 @@ bot.action(/cancel-(\d+)/, async (ctx) => {
   const requests = await getWaitlist()
   const chatId = Number(ctx.match[1])
   const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
-  // TODO - Update sheet with Cancelled status
+  await updateWaitlistStatus('Cancelled', request.index)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Cancel ❌)')
   ctx.reply("That's okay! Use /start if you ever want to make a new request in future.")
   ctx.answerCbQuery()
@@ -136,7 +136,7 @@ bot.action(/confirm-(\d+)/, async (ctx) => {
   const requests = await getWaitlist()
   const chatId = Number(ctx.match[1])
   const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
-  // TODO - Update sheet with Confirmed status
+  await updateWaitlistStatus('Confirmed', request.index)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Confirm 👍)')
   ctx.reply('Got it! We will be in touch with further information soon.')
   ctx.answerCbQuery()
