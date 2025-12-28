@@ -102,8 +102,8 @@ bot.action(/fulfill-(\d+)/, async (ctx) => {
   bot.telegram.sendMessage(
     chatId, 
     'Hello! we would like to confirm your request.\n' +
-    `This is for a qty of ${request.Qty} for ${request.Purpose}\n` +
-    'Please respond with the button below',
+    `This is for a qty of ${request.Qty} for ${request.Purpose}.\n` +
+    'Please respond with the button below.',
     Markup.inlineKeyboard([
       {
         text: 'Cancel ❌',
