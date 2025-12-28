@@ -63,7 +63,7 @@ bot.command('choose', async (ctx) => {
       ctx.reply('Use /start to find a list of requests to fulfill')
     } else {
       const requests = await getWaitlist()
-      const request = requests.filter(row => row['Chat ID'] === `${ctx.args[0]}`).at(0)
+      const request = requests.filter(row => row['Chat ID'] === `${ctx.args[0]}`).filter(row => !row.Status).at(0)
       if (request) {
         ctx.reply(
           `Fulfill request of qty ${request.Qty} from @${request['Telegram Handle']} for ${request.Purpose}?`,
@@ -96,7 +96,7 @@ bot.action('abort', (ctx) => {
 bot.action(/fulfill-(\d+)/, async (ctx) => {
   const requests = await getWaitlist()
   const chatId = Number(ctx.match[1])
-  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).filter(row => !row.Status).at(0)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Fulfill 👍)')
   await updateWaitlistStatus('Pending', request.index)
   bot.telegram.sendMessage(
@@ -125,7 +125,7 @@ bot.action(/fulfill-(\d+)/, async (ctx) => {
 bot.action(/cancel-(\d+)/, async (ctx) => {
   const requests = await getWaitlist()
   const chatId = Number(ctx.match[1])
-  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).filter(row => row.Status === 'Pending').at(0)
   await updateWaitlistStatus('Cancelled', request.index)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Cancel ❌)')
   ctx.reply("That's okay! Use /start if you ever want to make a new request in future.")
@@ -135,7 +135,7 @@ bot.action(/cancel-(\d+)/, async (ctx) => {
 bot.action(/confirm-(\d+)/, async (ctx) => {
   const requests = await getWaitlist()
   const chatId = Number(ctx.match[1])
-  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).at(0)
+  const request = requests.filter(row => row['Chat ID'] === `${chatId}`).filter(row => row.Status === 'Pending').at(0)
   await updateWaitlistStatus('Confirmed', request.index)
   ctx.editMessageText(ctx.callbackQuery.message.text + '\n(You replied with: Confirm 👍)')
   ctx.reply('Got it! We will be in touch with further information soon.')
