@@ -1,0 +1,8 @@
+[build]
+  command = "echo Building"
+  functions = ".netlify/functions/"
+[[redirects]]
+  force = true
+  status = 200
+  from = "/*"
+  to = "/.netlify/functions/serverless/:splat"
